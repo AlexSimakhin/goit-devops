@@ -1,77 +1,28 @@
-# AWS Infrastructure Setup (Terraform)
+# Lesson 5 Terraform Infrastructure
 
-This project contains Terraform configurations for the automated deployment of basic cloud infrastructure in AWS.
+This project defines the AWS infrastructure for lesson 5 using Terraform modules and a remote S3 backend with DynamoDB locking.
 
-## Architecture
+## Structure
 
-The infrastructure includes the following components:
-- **S3 Bucket**: Used for secure remote Terraform state storage.
-- **DynamoDB Table**: Provides a state locking mechanism to prevent concurrent modification conflicts.
-- **VPC (Virtual Private Cloud)**: An isolated network environment featuring public and private subnets.
-- **ECR (Elastic Container Registry)**: A private repository for storing Docker images.
+- `main.tf` connects the root inputs to the `s3-backend`, `vpc`, and `ecr` modules.
+- `backend.tf` configures the remote S3 backend and DynamoDB lock table.
+- `variables.tf` contains the root inputs and defaults used by the whole stack.
+- `outputs.tf` exposes shared values from the modules.
+- `modules/s3-backend` creates the state bucket and lock table.
+- `modules/vpc` creates the VPC, public/private subnets, IGW, NAT gateways, and routes.
+- `modules/ecr` creates the ECR repository, policy, and lifecycle policy.
 
-## Prerequisites
-
-- [Terraform](https://developer.hashicorp.com/terraform/downloads) (v1.5.0+ recommended).
-- AWS Account.
-- IAM User with the `AdministratorAccess` policy attached.
-- Generated AWS Access Key ID and Secret Access Key.
-
-## Deployment Steps
-
-### 1. Configure AWS Credentials
-
-Export your AWS access keys as environment variables in your terminal:
+## Commands
 
 ```bash
-export AWS_ACCESS_KEY_ID="YOUR_ACCESS_KEY_ID"
-export AWS_SECRET_ACCESS_KEY="YOUR_SECRET_ACCESS_KEY"
-export AWS_DEFAULT_REGION="us-west-2"
+terraform init
+terraform plan
+terraform apply
+terraform destroy
 ```
 
-### 2. Initial Setup (Create Backend)
+## Notes
 
-Since the S3 bucket for the remote state does not exist yet, you must temporarily disable the remote backend and create the bucket using a local state.
-
-```bash
-# 1. Temporarily disable the remote backend
-mv backend.tf backend.txt
-
-# 2. Initialize the working directory
-./terraform init
-
-# 3. Deploy only the S3 and DynamoDB modules
-./terraform apply -target=module.s3_backend
-```
-*Type `yes` when prompted to confirm the action.*
-
-### 3. State Migration (Move to S3)
-
-Once the S3 bucket is created, switch Terraform to use the remote state.
-
-```bash
-# 1. Restore the backend configuration file
-mv backend.txt backend.tf
-
-# 2. Initialize Terraform and migrate the state
-./terraform init -migrate-state
-```
-*Type `yes` when asked if you want to copy the existing state to the new backend.*
-
-### 4. Deploy VPC and ECR
-
-Now you can create the remaining infrastructure (network and container registry).
-
-```bash
-./terraform apply
-```
-*Review the execution plan and type `yes` to confirm.*
-
-## Cleanup
-
-**Important:** To prevent unexpected AWS charges, ensure you destroy the infrastructure when you are finished.
-
-```bash
-./terraform destroy
-```
-*Type `yes` to permanently remove all created resources.*
+- Copy `terraform.tfvars.example` to `terraform.tfvars` and replace the placeholder values before applying.
+- The backend bucket and lock table must exist before running `terraform init` against the remote backend.
+- The VPC module is configured for 3 public subnets and 3 private subnets across 3 availability zones.

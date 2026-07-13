@@ -1,7 +1,11 @@
 variable "ecr_name" {
-  type = string
+  description = "Name of the ECR repository"
+  type        = string
+  default     = "lesson-5-ecr"
 }
 
 variable "scan_on_push" {
-  type = bool
+  description = "Enable image scanning on push"
+  type        = bool
+  default     = true
 }
