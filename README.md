@@ -1,98 +1,61 @@
 # CI/CD Pipeline: Jenkins + Argo CD + AWS EKS
 
-This project implements a full **CI/CD pipeline** for a Django application using **Jenkins**, **Argo CD**, **Terraform**, and **AWS (EKS, ECR, VPC, S3)**.
+This project implements a GitOps-based **CI/CD pipeline** for a Django application using **Terraform**, **Jenkins**, **Argo CD**, **Helm**, and **AWS**.
 
 ---
 
-# 🏗 Architecture & Workflow
+## 🏗 Architecture
 
-The system follows a GitOps-based CI/CD approach:
+### Infrastructure (Terraform)
 
-## 1. Infrastructure as Code (Terraform)
+Terraform provisions:
 
-Terraform provisions the full AWS infrastructure:
+- AWS VPC
+- Amazon EKS
+- Amazon ECR
+- Amazon S3 + DynamoDB (Terraform backend)
+- Jenkins (Helm)
+- Argo CD (Helm)
 
-- VPC (networking)
-- Amazon EKS (Kubernetes cluster)
-- Amazon ECR (Docker registry)
-- S3 + DynamoDB (Terraform backend)
-- Jenkins (via Helm)
-- Argo CD (via Helm)
+### Continuous Integration (Jenkins)
 
----
+Jenkins runs inside Kubernetes and:
 
-## 2. Continuous Integration (Jenkins)
-
-Jenkins handles build automation:
-
-- Trigger: Git push
-- Runs inside Kubernetes (K8s agent)
-- Uses **Kaniko** to build Docker images (no Docker daemon required)
+- Triggers on Git push or manual build
+- Builds Docker images using **Kaniko**
 - Pushes images to Amazon ECR
-- Updates Helm chart (`values.yaml`) with new `image.tag`
-- Commits and pushes changes back to GitHub
+- Updates the Helm `image.tag`
+- Commits the updated Helm chart back to GitHub
+
+### Continuous Deployment (Argo CD)
+
+Argo CD continuously monitors the Git repository and automatically synchronizes Kubernetes resources with the latest Helm configuration.
 
 ---
 
-## 3. Continuous Deployment (Argo CD)
+## 🔄 CI/CD Workflow
 
-Argo CD implements GitOps deployment:
-
-- Monitors Git repository (Helm chart)
-- Detects changes automatically
-- Syncs Kubernetes cluster state with Git
-- Deploys:
-  - Deployments
-  - Services
-  - HPA (Horizontal Pod Autoscaler)
+1. Push code to GitHub.
+2. Jenkins builds a Docker image with Kaniko.
+3. The image is pushed to Amazon ECR.
+4. Jenkins updates the Helm chart and pushes the new commit.
+5. Argo CD detects the change.
+6. Argo CD deploys the updated application to Amazon EKS.
 
 ---
 
-# 🔁 CI/CD Flow
+## 🚀 Installation
 
-1. Developer pushes code to GitHub
-2. Jenkins pipeline starts automatically
-3. Docker image is built with Kaniko
-4. Image is pushed to Amazon ECR
-5. Jenkins updates Helm `values.yaml`
-6. Changes are pushed back to GitHub
-7. Argo CD detects changes
-8. Argo CD syncs Kubernetes cluster
-9. Application is updated automatically
+### 1. Bootstrap Terraform Backend
 
----
-
-# 🚀 Installation & Usage
-
-## 1. Bootstrap Terraform Backend
-
-Terraform uses S3 and DynamoDB for remote state.
-
-### Step 1 — Disable backend temporarily
-
-Comment out this block in `backend.tf`:
-
-```hcl
-backend "s3" {}
-```
-
-Initialize Terraform:
+Create the backend resources:
 
 ```bash
 terraform init
-```
-
-Create backend resources:
-
-```bash
 terraform apply -target=module.s3_backend
 ```
 
----
-
-### Step 2 — Enable backend
-
-Uncomment the backend block and run:
+Enable the S3 backend and migrate the state:
 
 ```bash
 terraform init -migrate-state
@@ -101,138 +64,141 @@ terraform apply -auto-approve
 
 ---
 
-## 2. Deploy PostgreSQL
+### 2. Configure Jenkins
 
-The database is deployed separately:
-
-```bash
-kubectl apply -f postgres.yaml
-```
-
----
-
-## 3. Configure Jenkins
-
-Get Jenkins external URL:
+Get the external address:
 
 ```bash
 kubectl get svc jenkins -n jenkins
 ```
 
-Open in browser:
+Open:
 
 ```
 http://<EXTERNAL-IP>:8080
 ```
 
----
-
-### Default Credentials
+Default credentials:
 
 ```
 Username: admin
 Password: adminpassword123
 ```
 
+Create the following Jenkins credentials:
+
+| ID | Type |
+|----|------|
+| `github-token` | Username with password |
+| `aws-access-key` | Secret text |
+| `aws-secret-key` | Secret text |
+
+Create a **Pipeline** using:
+
+- Repository URL
+- `github-token`
+- `Jenkinsfile`
+- Target branch
+
+Run **Build Now**.
+
 ---
 
-### Add GitHub Credentials
+### 3. Deploy PostgreSQL
 
-Navigate:
-
+```bash
+kubectl apply -f sc.yaml
+kubectl apply -f postgres.yaml
 ```
-Manage Jenkins → Credentials → System → Global credentials
+
+If the application is already running, restart it:
+
+```bash
+kubectl rollout restart deployment django-app-deployment
 ```
 
-Add:
-
-- Kind: Username with password
-- ID: `github-token`
-- Username: your GitHub username
-- Password: GitHub Personal Access Token (PAT)
-
 ---
 
-### Create Pipeline
+### 4. Verify Argo CD
 
-- Create **Multibranch Pipeline**
-- Connect your GitHub repository
-- Run initial build
-
----
-
-## 4. Verify Argo CD
-
-Get Argo CD URL:
+Get the external address:
 
 ```bash
 kubectl get svc argo-cd-argocd-server -n argocd
 ```
 
----
-
-### Get Admin Password
+Retrieve the admin password:
 
 ```bash
 kubectl -n argocd get secret argocd-initial-admin-secret \
 -o jsonpath="{.data.password}" | base64 -d
 ```
 
----
-
-### Login
+Login:
 
 ```
+https://<EXTERNAL-IP>
+
 Username: admin
 Password: <retrieved-password>
 ```
 
----
+The application should eventually display:
 
-### Check Application
-
-- Open Argo CD UI
-- Find `django-app`
-- Status should be:
-
-```
-Healthy
-Synced
-```
-
-Once Jenkins updates the image tag, Argo CD will auto-sync.
+- **Healthy**
+- **Synced**
 
 ---
 
-# 🧹 Cleanup
+## 🛠 Troubleshooting
 
-> ⚠️ **Important:** Amazon EKS is NOT free and can incur charges.
+### Jenkins Pods remain Pending
 
-Destroy all infrastructure:
+Increase EKS node capacity by:
+
+- changing instance type (e.g. `t3.medium`)
+- increasing the node group's `desired_size`
+
+Then run:
+
+```bash
+terraform apply
+```
+
+### Argo CD Application stays in "Progressing"
+
+If no Ingress Controller is installed, disable Ingress in the Helm chart:
+
+```yaml
+ingress:
+  enabled: false
+```
+
+Commit and push the change. Argo CD will synchronize automatically, and the application can be accessed through its LoadBalancer service.
+
+---
+
+## 🧹 Cleanup
+
+Destroy all AWS resources:
 
 ```bash
 terraform destroy -auto-approve
 ```
 
----
-
-# 📝 Notes
-
-- Ensure `terraform.tfvars` is properly configured
-- Jenkins must have correct GitHub token permissions
-- Argo CD must have access to the Git repository
-- Keep Helm chart (`values.yaml`) in sync with image versions
-- PostgreSQL is deployed separately — ensure connectivity settings match
+> **Note:** Amazon EKS is not included in the AWS Free Tier. Destroy resources after testing to avoid unnecessary charges.
 
 ---
 
-# 📌 Tech Stack
+## 📌 Tech Stack
 
-- AWS (EKS, ECR, VPC, S3, DynamoDB)
 - Terraform
+- AWS (VPC, EKS, ECR, S3, DynamoDB)
 - Kubernetes
 - Helm
 - Jenkins
 - Argo CD
 - Kaniko
 - Django
+- PostgreSQL
+- Nginx
