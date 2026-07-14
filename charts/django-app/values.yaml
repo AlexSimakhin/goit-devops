@@ -20,14 +20,14 @@ service:
 env:
   DEBUG: "False"
   ALLOWED_HOSTS: "*"
-  POSTGRES_DB: "django_db"
-  POSTGRES_USER: "django_user"
+  POSTGRES_DB: "mydatabase"
+  POSTGRES_USER: "myuser"
   POSTGRES_HOST: "db"
   POSTGRES_PORT: "5432"
 
 secrets:
   DJANGO_SECRET_KEY: "placeholder-secret-key"
-  POSTGRES_PASSWORD: "placeholder-db-password"
+  POSTGRES_PASSWORD: "mypassword"
 
 ingress:
   enabled: true
