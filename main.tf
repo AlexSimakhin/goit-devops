@@ -21,3 +21,9 @@ module "ecr" {
   ecr_name     = var.ecr_repository_name
   scan_on_push = var.scan_on_push
 }
+
+module "eks" {
+  source       = "./modules/eks"
+  cluster_name = var.cluster_name
+  subnet_ids   = concat(module.vpc.public_subnet_ids, module.vpc.private_subnet_ids)
+}

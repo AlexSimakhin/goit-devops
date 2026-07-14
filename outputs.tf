@@ -17,3 +17,13 @@ output "dynamodb_table_name" {
   description = "The name of the DynamoDB lock table"
   value       = module.s3_backend.dynamodb_table_name
 }
+
+output "eks_cluster_name" {
+  description = "EKS cluster name"
+  value       = module.eks.cluster_name
+}
+
+output "eks_cluster_endpoint" {
+  description = "Endpoint for EKS control plane"
+  value       = module.eks.cluster_endpoint
+}
