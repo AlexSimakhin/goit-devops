@@ -7,7 +7,7 @@ variable "region" {
 variable "state_bucket_name" {
   description = "Name of the S3 bucket for Terraform state"
   type        = string
-  default     = "lesson-5-terraform-state"
+  default     = "lesson-7-tf-state-simakhin"
 }
 
 variable "state_table_name" {
@@ -19,7 +19,7 @@ variable "state_table_name" {
 variable "vpc_name" {
   description = "Name of the VPC"
   type        = string
-  default     = "lesson-5-vpc"
+  default     = "lesson-7-vpc"
 }
 
 variable "vpc_cidr_block" {
@@ -67,7 +67,7 @@ variable "one_nat_gateway_per_az" {
 variable "ecr_repository_name" {
   description = "Name of the ECR repository"
   type        = string
-  default     = "lesson-5-ecr"
+  default     = "lesson-7-ecr"
 }
 
 variable "scan_on_push" {
