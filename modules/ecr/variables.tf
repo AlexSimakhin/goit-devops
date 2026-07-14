@@ -1,7 +1,7 @@
 variable "ecr_name" {
   description = "Name of the ECR repository"
   type        = string
-  default     = "lesson-7-ecr"
+  default     = "lesson-8-9-ecr"
 }
 
 variable "scan_on_push" {

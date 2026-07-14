@@ -1,0 +1,11 @@
+controller:
+  admin:
+    username: "admin"
+    password: "adminpassword123"
+  serviceType: "LoadBalancer"
+  installPlugins:
+    - kubernetes:4.1.1
+    - workflow-job:1385.vb_58b_86ce29ca_
+    - workflow-aggregator:596.v8c21c963d92d
+    - credentials-binding:642.v19604bc17904
+    - git:5.2.1

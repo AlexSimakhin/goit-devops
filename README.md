@@ -1,270 +1,109 @@
-# AWS EKS Infrastructure & Django Application Deployment
+# CI/CD Pipeline: Jenkins + Argo CD + AWS EKS
 
-This project provisions a complete cloud infrastructure on **AWS** using **Terraform** and deploys a containerized **Django** application with a **PostgreSQL** database to an **Amazon EKS (Elastic Kubernetes Service)** cluster using **Helm**.
-
----
-
-# 🏗 Architecture Overview
-
-The infrastructure consists of the following components:
-
-1. **Terraform Remote Backend**
-   - Amazon S3 Bucket for Terraform state storage
-   - Amazon DynamoDB table for state locking
-
-2. **Infrastructure Provisioning (Terraform)**
-   - AWS VPC
-   - Public and Private Subnets
-   - Internet Gateway
-   - NAT Gateway
-   - Amazon ECR
-   - Amazon EKS
-
-3. **Application**
-   - Dockerized Django application
-
-4. **Database**
-   - PostgreSQL running inside the Kubernetes cluster
-
-5. **Kubernetes & Helm**
-   - Deployments
-   - Services
-   - ConfigMaps
-   - Secrets
-   - AWS LoadBalancer Service
-
-6. **DNS**
-   - Custom domain pointing to the AWS LoadBalancer
+This project implements a full **CI/CD pipeline** for a Django application using **Jenkins**, **Argo CD**, **Terraform**, and **AWS (EKS, ECR, VPC, S3)**.
 
 ---
 
-# 📂 Infrastructure Components
+# 🏗 Architecture & Workflow
 
-## Terraform Backend (`backend.tf`)
+The system follows a GitOps-based CI/CD approach:
 
-Terraform uses a **remote backend** to safely store infrastructure state.
+## 1. Infrastructure as Code (Terraform)
 
-The backend consists of:
+Terraform provisions the full AWS infrastructure:
 
-- Amazon S3 Bucket
-- Amazon DynamoDB table
-
-Since Terraform cannot create the backend while simultaneously using it, the backend must be bootstrapped during the first deployment (see **Usage** section).
-
----
-
-## Terraform Modules
-
-The infrastructure is organized into reusable modules.
-
-### `modules/vpc`
-
-Creates:
-
-- VPC
-- 3 Public Subnets
-- 3 Private Subnets
-- Internet Gateway
-- NAT Gateway
-- Route Tables
-
-Resources are distributed across three Availability Zones.
+- VPC (networking)
+- Amazon EKS (Kubernetes cluster)
+- Amazon ECR (Docker registry)
+- S3 + DynamoDB (Terraform backend)
+- Jenkins (via Helm)
+- Argo CD (via Helm)
 
 ---
 
-### `modules/ecr`
+## 2. Continuous Integration (Jenkins)
 
-Creates an **Amazon Elastic Container Registry (ECR)** repository.
+Jenkins handles build automation:
 
-Features:
-
-- Docker image repository
-- Lifecycle policy for old images
-
----
-
-### `modules/eks`
-
-Deploys:
-
-- Amazon EKS Cluster
-- Managed Node Groups
-- IAM Roles
-- Kubernetes networking
+- Trigger: Git push
+- Runs inside Kubernetes (K8s agent)
+- Uses **Kaniko** to build Docker images (no Docker daemon required)
+- Pushes images to Amazon ECR
+- Updates Helm chart (`values.yaml`) with new `image.tag`
+- Commits and pushes changes back to GitHub
 
 ---
 
-# 🐳 Django Containerization
+## 3. Continuous Deployment (Argo CD)
 
-The Django application is packaged as a Docker image.
+Argo CD implements GitOps deployment:
 
-Workflow:
-
-1. Build Docker image
-2. Tag image
-3. Push image to Amazon ECR
-4. Deploy image into Kubernetes
-
----
-
-# ☸ Kubernetes Deployment
-
-Deployment is managed using a custom Helm chart located at:
-
-```
-charts/django-app
-```
-
-The chart deploys:
-
-- Django Deployment
-- Kubernetes Service
-- ConfigMap
-- Secret
+- Monitors Git repository (Helm chart)
+- Detects changes automatically
+- Syncs Kubernetes cluster state with Git
+- Deploys:
+  - Deployments
+  - Services
+  - HPA (Horizontal Pod Autoscaler)
 
 ---
 
-## PostgreSQL
+# 🔁 CI/CD Flow
 
-A PostgreSQL instance is deployed inside Kubernetes using:
-
-```
-postgres.yaml
-```
-
-It creates:
-
-- PostgreSQL Pod
-- PostgreSQL Service
-
-The database is accessible only within the cluster.
+1. Developer pushes code to GitHub
+2. Jenkins pipeline starts automatically
+3. Docker image is built with Kaniko
+4. Image is pushed to Amazon ECR
+5. Jenkins updates Helm `values.yaml`
+6. Changes are pushed back to GitHub
+7. Argo CD detects changes
+8. Argo CD syncs Kubernetes cluster
+9. Application is updated automatically
 
 ---
 
-## Configuration
-
-Environment variables are managed through:
-
-- ConfigMap
-- Secret
-
-These are injected into the Django Pods using:
-
-```yaml
-envFrom:
-```
-
-Examples include:
-
-- Database Host
-- Database Name
-- Username
-- Password
-
----
-
-## Load Balancer
-
-The Kubernetes Service uses:
-
-```yaml
-type: LoadBalancer
-```
-
-AWS automatically provisions an **Elastic Load Balancer (ELB)**, exposing the application over HTTP (Port 80).
-
----
-
-# 🌐 DNS Configuration
-
-Traffic is routed using a custom domain.
-
-A **CNAME** record points:
-
-```
-www.oleksandr-simakhin.tech
-```
-
-to the generated AWS LoadBalancer hostname.
-
-The Django configuration (`ALLOWED_HOSTS`) must include:
-
-- AWS LoadBalancer hostname
-- Custom domain
-
----
-
-# 🚀 Usage
+# 🚀 Installation & Usage
 
 ## 1. Bootstrap Terraform Backend
 
-Temporarily disable the remote backend.
+Terraform uses S3 and DynamoDB for remote state.
 
-```bash
-mv backend.tf backend.tf.backup
+### Step 1 — Disable backend temporarily
+
+Comment out this block in `backend.tf`:
+
+```hcl
+backend "s3" {}
 ```
 
-Initialize Terraform locally.
+Initialize Terraform:
 
 ```bash
 terraform init
 ```
 
-Create the backend resources.
+Create backend resources:
 
 ```bash
-terraform apply -auto-approve
+terraform apply -target=module.s3_backend
 ```
 
-Restore the backend configuration.
+---
 
-```bash
-mv backend.tf.backup backend.tf
-```
+### Step 2 — Enable backend
 
-Migrate the local state to the remote backend.
+Uncomment the backend block and run:
 
 ```bash
 terraform init -migrate-state
+terraform apply -auto-approve
 ```
 
 ---
 
-## 2. Build Docker Image
+## 2. Deploy PostgreSQL
 
-Navigate to the application directory.
-
-```bash
-cd app
-```
-
-Build the Docker image.
-
-```bash
-docker build -t django-app .
-```
-
-Tag the image.
-
-```bash
-docker tag django-app:latest <aws-account-id>.dkr.ecr.<region>.amazonaws.com/<repository>:latest
-```
-
-Push the image.
-
-```bash
-docker push <aws-account-id>.dkr.ecr.<region>.amazonaws.com/<repository>:latest
-```
-
-Return to the project root.
-
-```bash
-cd ..
-```
-
----
-
-## 3. Deploy PostgreSQL
+The database is deployed separately:
 
 ```bash
 kubectl apply -f postgres.yaml
@@ -272,49 +111,104 @@ kubectl apply -f postgres.yaml
 
 ---
 
-## 4. Deploy the Django Application
+## 3. Configure Jenkins
 
-Install the Helm chart.
+Get Jenkins external URL:
 
 ```bash
-helm install django-app ./charts/django-app
+kubectl get svc jenkins -n jenkins
+```
+
+Open in browser:
+
+```
+http://<EXTERNAL-IP>:8080
 ```
 
 ---
 
-## 5. Update the Deployment
+### Default Credentials
 
-After modifying the Helm chart or values:
-
-```bash
-helm upgrade django-app ./charts/django-app
+```
+Username: admin
+Password: adminpassword123
 ```
 
-Restart the deployment.
+---
+
+### Add GitHub Credentials
+
+Navigate:
+
+```
+Manage Jenkins → Credentials → System → Global credentials
+```
+
+Add:
+
+- Kind: Username with password
+- ID: `github-token`
+- Username: your GitHub username
+- Password: GitHub Personal Access Token (PAT)
+
+---
+
+### Create Pipeline
+
+- Create **Multibranch Pipeline**
+- Connect your GitHub repository
+- Run initial build
+
+---
+
+## 4. Verify Argo CD
+
+Get Argo CD URL:
 
 ```bash
-kubectl rollout restart deployment django-app-deployment
+kubectl get svc argo-cd-argocd-server -n argocd
 ```
+
+---
+
+### Get Admin Password
+
+```bash
+kubectl -n argocd get secret argocd-initial-admin-secret \
+-o jsonpath="{.data.password}" | base64 -d
+```
+
+---
+
+### Login
+
+```
+Username: admin
+Password: <retrieved-password>
+```
+
+---
+
+### Check Application
+
+- Open Argo CD UI
+- Find `django-app`
+- Status should be:
+
+```
+Healthy
+Synced
+```
+
+Once Jenkins updates the image tag, Argo CD will auto-sync.
 
 ---
 
 # 🧹 Cleanup
 
-> **Important:** Amazon EKS is **not included** in the AWS Free Tier. Destroy all resources after testing to avoid unexpected charges.
+> ⚠️ **Important:** Amazon EKS is NOT free and can incur charges.
 
-Uninstall the Helm release.
-
-```bash
-helm uninstall django-app
-```
-
-Delete PostgreSQL resources.
-
-```bash
-kubectl delete -f postgres.yaml
-```
-
-Destroy the Terraform infrastructure.
+Destroy all infrastructure:
 
 ```bash
 terraform destroy -auto-approve
@@ -324,9 +218,21 @@ terraform destroy -auto-approve
 
 # 📝 Notes
 
-- Configure `terraform.tfvars` before running Terraform.
-- Ensure database credentials match across:
-  - `values.yaml`
-  - `postgres.yaml`
-- Update the Django `ALLOWED_HOSTS` setting whenever the LoadBalancer hostname or domain changes.
-- Push a new Docker image to Amazon ECR before deploying application updates.
+- Ensure `terraform.tfvars` is properly configured
+- Jenkins must have correct GitHub token permissions
+- Argo CD must have access to the Git repository
+- Keep Helm chart (`values.yaml`) in sync with image versions
+- PostgreSQL is deployed separately — ensure connectivity settings match
+
+---
+
+# 📌 Tech Stack
+
+- AWS (EKS, ECR, VPC, S3, DynamoDB)
+- Terraform
+- Kubernetes
+- Helm
+- Jenkins
+- Argo CD
+- Kaniko
+- Django

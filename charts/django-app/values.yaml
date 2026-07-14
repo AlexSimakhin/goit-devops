@@ -1,5 +1,5 @@
 image:
-  repository: 974436228692.dkr.ecr.us-west-2.amazonaws.com/lesson-7-ecr
+  repository: 974436228692.dkr.ecr.us-west-2.amazonaws.com/lesson-8-9-ecr
   tag: latest
 
 replicaCount: 2

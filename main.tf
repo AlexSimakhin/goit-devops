@@ -27,3 +27,17 @@ module "eks" {
   cluster_name = var.cluster_name
   subnet_ids   = concat(module.vpc.public_subnet_ids, module.vpc.private_subnet_ids)
 }
+
+module "jenkins" {
+  source                 = "./modules/jenkins"
+  cluster_name           = module.eks.cluster_name
+  cluster_endpoint       = module.eks.cluster_endpoint
+  cluster_ca_certificate = module.eks.cluster_certificate_authority_data
+}
+
+module "argo_cd" {
+  source                 = "./modules/argo_cd"
+  cluster_name           = module.eks.cluster_name
+  cluster_endpoint       = module.eks.cluster_endpoint
+  cluster_ca_certificate = module.eks.cluster_certificate_authority_data
+}
