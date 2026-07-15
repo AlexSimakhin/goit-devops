@@ -35,3 +35,13 @@ output "jenkins_namespace" {
 output "argocd_namespace" {
   value = module.argo_cd.argocd_namespace
 }
+
+output "jenkins_url" {
+  description = "Jenkins URL"
+  value       = module.jenkins.jenkins_url
+}
+
+output "argocd_url" {
+  description = "ArgoCD URL"
+  value       = module.argo_cd.argocd_url
+}

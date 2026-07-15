@@ -33,6 +33,7 @@ module "jenkins" {
   cluster_name           = module.eks.cluster_name
   cluster_endpoint       = module.eks.cluster_endpoint
   cluster_ca_certificate = module.eks.cluster_certificate_authority_data
+  admin_password         = var.jenkins_admin_password
 }
 
 module "argo_cd" {

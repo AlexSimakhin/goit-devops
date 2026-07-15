@@ -1,7 +1,4 @@
 controller:
-  admin:
-    username: "admin"
-    password: "adminpassword123"
   serviceType: "LoadBalancer"
   installPlugins:
     - kubernetes:4.1.1
@@ -9,3 +6,22 @@ controller:
     - workflow-aggregator:596.v8c21c963d92d
     - credentials-binding:642.v19604bc17904
     - git:5.2.1
+  resources:
+    requests:
+      cpu: "50m"
+      memory: "256Mi"
+    limits:
+      cpu: "1000m"
+      memory: "2048Mi"
+agent:
+  enabled: true
+  resources:
+    requests:
+      cpu: "50m"
+      memory: "256Mi"
+    limits:
+      cpu: "1000m"
+      memory: "1024Mi"
+persistence:
+  enabled: true
+  size: "8Gi"

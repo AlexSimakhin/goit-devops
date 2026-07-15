@@ -1,3 +1,19 @@
-repoUrl: "https://github.com/AlexSimakhin/goit-devops.git"
-targetRevision: "lesson-8-9"
-path: "charts/django-app"
+server:
+  service:
+    type: LoadBalancer
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 100m
+      memory: 256Mi
+
+repoServer:
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 100m
+      memory: 256Mi

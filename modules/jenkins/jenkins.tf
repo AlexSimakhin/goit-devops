@@ -11,8 +11,17 @@ resource "helm_release" "jenkins" {
   namespace        = "jenkins"
   create_namespace = true
 
+  values = [
+    file("${path.module}/values.yaml")
+  ]
+
   set {
     name  = "controller.serviceType"
     value = "LoadBalancer"
+  }
+
+  set {
+    name  = "controller.admin.password"
+    value = var.admin_password
   }
 }

@@ -18,3 +18,10 @@ variable "cluster_ca_certificate" {
   description = "Base64 encoded cluster certificate authority data"
   type        = string
 }
+
+variable "jenkins_admin_password" {
+  description = "Admin password for Jenkins"
+  type        = string
+  default     = "adminpassword123"
+  sensitive   = true
+}

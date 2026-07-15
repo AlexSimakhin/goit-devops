@@ -36,7 +36,9 @@ spec:
                     ]) {
                         sh '''
                         export AWS_DEFAULT_REGION=us-west-2
-                        /kaniko/executor --context `pwd`/app --dockerfile `pwd`/app/Dockerfile --destination ${ECR_REPO}:${BUILD_NUMBER} --destination ${ECR_REPO}:latest --force
+                        mkdir -p /kaniko/.docker
+                        echo '{"credsStore":"ecr-login"}' > /kaniko/.docker/config.json
+                        /kaniko/executor --context `pwd`/app --dockerfile `pwd`/app/Dockerfile --destination ${ECR_REPO}:${BUILD_NUMBER} --destination ${ECR_REPO}:latest
                         '''
                     }
                 }
