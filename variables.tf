@@ -81,3 +81,34 @@ variable "cluster_name" {
   type        = string
   default     = "lesson-8-9-cluster"
 }
+
+variable "use_aurora" {
+  description = "Set to true to deploy an Aurora cluster, false for standard RDS"
+  type        = bool
+  default     = false
+}
+
+variable "db_name" {
+  description = "Database name"
+  type        = string
+  default     = "mydatabase"
+}
+
+variable "db_username" {
+  description = "Database master username"
+  type        = string
+  default     = "postgres"
+}
+
+variable "db_password" {
+  description = "Database master password"
+  type        = string
+  sensitive   = true
+  default     = "admin123AWS23"
+}
+
+variable "db_instance_class" {
+  description = "Database instance class"
+  type        = string
+  default     = "db.t3.medium"
+}

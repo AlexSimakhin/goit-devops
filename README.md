@@ -1,6 +1,6 @@
-# CI/CD Pipeline: Jenkins + Argo CD + AWS EKS
+# CI/CD Pipeline & Infrastructure: Jenkins + Argo CD + AWS EKS + RDS/Aurora
 
-This project implements a GitOps-based **CI/CD pipeline** for a Django application using **Terraform**, **Jenkins**, **Argo CD**, **Helm**, and **AWS**.
+This project implements a GitOps-based **CI/CD pipeline** for a Django application and provisions a highly available AWS infrastructure using **Terraform**, **Jenkins**, **Argo CD**, **Helm**, and **Amazon EKS**.
 
 ---
 
@@ -10,9 +10,10 @@ This project implements a GitOps-based **CI/CD pipeline** for a Django applicati
 
 Terraform provisions:
 
-- AWS VPC
+- AWS VPC (Public & Private Subnets)
 - Amazon EKS
 - Amazon ECR
+- Amazon RDS or Aurora (configurable)
 - Amazon S3 + DynamoDB (Terraform backend)
 - Jenkins (Helm)
 - Argo CD (Helm)
@@ -22,25 +23,53 @@ Terraform provisions:
 Jenkins runs inside Kubernetes and:
 
 - Triggers on Git push or manual build
-- Builds Docker images using **Kaniko**
+- Builds Docker images with **Kaniko**
 - Pushes images to Amazon ECR
 - Updates the Helm `image.tag`
-- Commits the updated Helm chart back to GitHub
+- Pushes changes back to GitHub
 
 ### Continuous Deployment (Argo CD)
 
-Argo CD continuously monitors the Git repository and automatically synchronizes Kubernetes resources with the latest Helm configuration.
+Argo CD continuously watches the Git repository and automatically synchronizes the Kubernetes cluster with the latest Helm configuration.
+
+---
+
+## 🗄 Flexible Database Module
+
+The project includes a reusable Terraform module (`modules/rds`) that supports both **Amazon RDS** and **Amazon Aurora**.
+
+Switch between database types using a single variable:
+
+```hcl
+use_aurora = false   # RDS
+use_aurora = true    # Aurora
+```
+
+Supported engines:
+
+- PostgreSQL
+- MySQL
+- Aurora PostgreSQL
+- Aurora MySQL
+
+The module automatically creates:
+
+- Security Group
+- DB Subnet Group
+- Parameter Group
+- RDS Instance or Aurora Cluster
 
 ---
 
 ## 🔄 CI/CD Workflow
 
 1. Push code to GitHub.
-2. Jenkins builds a Docker image with Kaniko.
+2. Jenkins builds a Docker image using Kaniko.
 3. The image is pushed to Amazon ECR.
-4. Jenkins updates the Helm chart and pushes the new commit.
-5. Argo CD detects the change.
-6. Argo CD deploys the updated application to Amazon EKS.
+4. Jenkins updates the Helm chart.
+5. Jenkins pushes the updated configuration to GitHub.
+6. Argo CD detects the change.
+7. Argo CD deploys the new version to Amazon EKS.
 
 ---
 
@@ -62,11 +91,13 @@ terraform init -migrate-state
 terraform apply -auto-approve
 ```
 
+Terraform will provision the AWS infrastructure, including EKS, Jenkins, Argo CD, and the configured RDS/Aurora database.
+
 ---
 
 ### 2. Configure Jenkins
 
-Get the external address:
+Retrieve the external address:
 
 ```bash
 kubectl get svc jenkins -n jenkins
@@ -93,7 +124,7 @@ Create the following Jenkins credentials:
 | `aws-access-key` | Secret text |
 | `aws-secret-key` | Secret text |
 
-Create a **Pipeline** using:
+Create a Pipeline using:
 
 - Repository URL
 - `github-token`
@@ -104,30 +135,15 @@ Run **Build Now**.
 
 ---
 
-### 3. Deploy PostgreSQL
+### 3. Verify Argo CD
 
-```bash
-kubectl apply -f sc.yaml
-kubectl apply -f postgres.yaml
-```
-
-If the application is already running, restart it:
-
-```bash
-kubectl rollout restart deployment django-app-deployment
-```
-
----
-
-### 4. Verify Argo CD
-
-Get the external address:
+Retrieve the external address:
 
 ```bash
 kubectl get svc argo-cd-argocd-server -n argocd
 ```
 
-Retrieve the admin password:
+Retrieve the initial password:
 
 ```bash
 kubectl -n argocd get secret argocd-initial-admin-secret \
@@ -145,8 +161,8 @@ Password: <retrieved-password>
 
 The application should eventually display:
 
-- **Healthy**
-- **Synced**
+- ✅ Healthy
+- ✅ Synced
 
 ---
 
@@ -154,12 +170,12 @@ The application should eventually display:
 
 ### Jenkins Pods remain Pending
 
-Increase EKS node capacity by:
+Increase the EKS node capacity by:
 
-- changing instance type (e.g. `t3.medium`)
+- using a larger instance type (e.g. `t3.medium`)
 - increasing the node group's `desired_size`
 
-Then run:
+Then apply the changes:
 
 ```bash
 terraform apply
@@ -167,38 +183,38 @@ terraform apply
 
 ### Argo CD Application stays in "Progressing"
 
-If no Ingress Controller is installed, disable Ingress in the Helm chart:
+If your cluster does not include an Ingress Controller, disable Ingress:
 
 ```yaml
 ingress:
   enabled: false
 ```
 
-Commit and push the change. Argo CD will synchronize automatically, and the application can be accessed through its LoadBalancer service.
+Commit and push the change. Argo CD will synchronize automatically, and the application will be accessible through its LoadBalancer service.
 
 ---
 
 ## 🧹 Cleanup
 
-Destroy all AWS resources:
+Destroy the infrastructure:
 
 ```bash
 terraform destroy -auto-approve
 ```
 
-> **Note:** Amazon EKS is not included in the AWS Free Tier. Destroy resources after testing to avoid unnecessary charges.
+> **Note:** Amazon EKS, NAT Gateways, and Amazon RDS/Aurora are not included in the AWS Free Tier. Destroy all resources after testing to avoid unnecessary charges. If required, manually empty ECR repositories or S3 buckets before running `terraform destroy`.
 
 ---
 
 ## 📌 Tech Stack
 
 - Terraform
-- AWS (VPC, EKS, ECR, S3, DynamoDB)
+- AWS (VPC, EKS, ECR, RDS/Aurora, S3, DynamoDB)
 - Kubernetes
 - Helm
 - Jenkins
 - Argo CD
 - Kaniko
 - Django
-- PostgreSQL
+- PostgreSQL / MySQL
 - Nginx

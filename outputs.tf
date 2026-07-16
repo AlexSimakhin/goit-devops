@@ -45,3 +45,13 @@ output "argocd_url" {
   description = "ArgoCD URL"
   value       = module.argo_cd.argocd_url
 }
+
+output "rds_endpoint" {
+  description = "Database connection endpoint"
+  value       = module.rds.db_endpoint
+}
+
+output "rds_port" {
+  description = "Database connection port"
+  value       = module.rds.db_port
+}
