@@ -73,10 +73,13 @@ module "rds" {
   vpc_id                  = module.vpc.vpc_id
   multi_az                = true
   backup_retention_period = 7
+  db_port                 = 5432
+  allowed_cidr_blocks     = [var.vpc_cidr_block]
 
   parameters = {
-    max_connections            = "200"
-    log_min_duration_statement = "500"
+    max_connections = "100"
+    log_statement   = "all"
+    work_mem        = "4096"
   }
 
   tags = {

@@ -112,3 +112,10 @@ variable "db_instance_class" {
   type        = string
   default     = "db.t3.medium"
 }
+
+variable "jenkins_admin_password" {
+  description = "Admin password for Jenkins"
+  type        = string
+  default     = "adminpassword123"
+  sensitive   = true
+}
