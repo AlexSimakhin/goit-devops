@@ -1,208 +1,165 @@
-# CI/CD Pipeline & Infrastructure: Jenkins + Argo CD + AWS EKS + RDS/Aurora
+# Django Cloud Orchestration: GitOps-Driven Infrastructure
 
-This project implements a GitOps-based **CI/CD pipeline** for a Django application and provisions a highly available AWS infrastructure using **Terraform**, **Jenkins**, **Argo CD**, **Helm**, and **Amazon EKS**.
+This project provisions a production-ready AWS infrastructure and implements a **GitOps-based CI/CD pipeline** for a containerized Django application using **Terraform**, **Jenkins**, **Argo CD**, **Helm**, **Amazon EKS**, and a complete **monitoring stack**.
 
 ---
 
 ## 🏗 Architecture
 
-### Infrastructure (Terraform)
-
-Terraform provisions:
-
-- AWS VPC (Public & Private Subnets)
-- Amazon EKS
-- Amazon ECR
-- Amazon RDS or Aurora (configurable)
-- Amazon S3 + DynamoDB (Terraform backend)
-- Jenkins (Helm)
-- Argo CD (Helm)
-
-### Continuous Integration (Jenkins)
-
-Jenkins runs inside Kubernetes and:
-
-- Triggers on Git push or manual build
-- Builds Docker images with **Kaniko**
-- Pushes images to Amazon ECR
-- Updates the Helm `image.tag`
-- Pushes changes back to GitHub
-
-### Continuous Deployment (Argo CD)
-
-Argo CD continuously watches the Git repository and automatically synchronizes the Kubernetes cluster with the latest Helm configuration.
+| Component | Technology | Purpose |
+|-----------|------------|---------|
+| Infrastructure | Terraform | AWS resource provisioning |
+| Cloud | AWS (VPC, EKS, ECR, RDS/Aurora, S3, DynamoDB) | Cloud infrastructure |
+| Compute | Amazon EKS | Kubernetes orchestration |
+| Storage | GP3 StorageClass | Dynamic EBS persistent volumes |
+| CI | Jenkins + Kaniko | Build and publish Docker images |
+| CD | Argo CD | GitOps deployment |
+| Monitoring | Prometheus, Grafana | Metrics, dashboards & observability |
+| Runtime | Django, PostgreSQL 15, Nginx | Application stack |
 
 ---
 
-## 🗄 Flexible Database Module
+## 🗄 Database Infrastructure
 
-The project includes a reusable Terraform module (`modules/rds`) that supports both **Amazon RDS** and **Amazon Aurora**.
+The project includes a reusable Terraform module supporting both **Amazon RDS** and **Amazon Aurora**.
 
-Switch between database types using a single variable:
-
-```hcl
-use_aurora = false   # RDS
-use_aurora = true    # Aurora
-```
-
-Supported engines:
+Supported database engines:
 
 - PostgreSQL
 - MySQL
 - Aurora PostgreSQL
 - Aurora MySQL
 
-The module automatically creates:
+The module automatically provisions:
 
 - Security Group
 - DB Subnet Group
 - Parameter Group
 - RDS Instance or Aurora Cluster
 
+Switching between RDS and Aurora only requires changing Terraform variables.
+
 ---
 
 ## 🔄 CI/CD Workflow
 
+The deployment process is fully automated:
+
 1. Push code to GitHub.
-2. Jenkins builds a Docker image using Kaniko.
-3. The image is pushed to Amazon ECR.
-4. Jenkins updates the Helm chart.
-5. Jenkins pushes the updated configuration to GitHub.
-6. Argo CD detects the change.
-7. Argo CD deploys the new version to Amazon EKS.
+2. Jenkins builds the Docker image using **Kaniko**.
+3. The image is pushed to **Amazon ECR**.
+4. Jenkins updates `charts/django-app/values.yaml` with the new image tag.
+5. Jenkins commits and pushes the updated Helm chart to GitHub.
+6. Argo CD detects repository changes.
+7. Argo CD synchronizes the Kubernetes cluster.
+8. The updated application is deployed automatically.
 
 ---
 
-## 🚀 Installation
+## 📊 Monitoring & Observability
+
+The cluster includes a monitoring stack for infrastructure and application observability.
+
+Components:
+
+- **Prometheus** – collects metrics from Kubernetes workloads.
+- **Grafana** – visualizes metrics using customizable dashboards.
+- **Node Exporter** – exposes CPU, memory, disk, and network metrics for cluster nodes.
+- **Kube State Metrics** – provides metrics for Kubernetes resources such as Pods, Deployments, Nodes, and Services.
+
+The monitoring stack enables:
+
+- Cluster health monitoring
+- Resource utilization analysis
+- Application performance visualization
+- Kubernetes workload monitoring
+- Infrastructure observability through Grafana dashboards
+
+---
+
+## 🚀 Deployment
 
 ### 1. Bootstrap Terraform Backend
 
-Create the backend resources:
+Initialize Terraform and create the backend resources:
 
 ```bash
 terraform init
 terraform apply -target=module.s3_backend
 ```
 
-Enable the S3 backend and migrate the state:
+Enable the S3 backend and migrate the Terraform state:
 
 ```bash
 terraform init -migrate-state
 terraform apply -auto-approve
 ```
 
-Terraform will provision the AWS infrastructure, including EKS, Jenkins, Argo CD, and the configured RDS/Aurora database.
+This provisions the complete AWS infrastructure, including:
+
+- VPC
+- EKS
+- ECR
+- RDS/Aurora
+- Jenkins
+- Argo CD
 
 ---
 
-### 2. Configure Jenkins
+### 2. Configure Storage
 
-Retrieve the external address:
+Create the GP3 StorageClass used for dynamic EBS volumes:
 
 ```bash
-kubectl get svc jenkins -n jenkins
+kubectl apply -f sc.yaml
 ```
-
-Open:
-
-```
-http://<EXTERNAL-IP>:8080
-```
-
-Default credentials:
-
-```
-Username: admin
-Password: adminpassword123
-```
-
-Create the following Jenkins credentials:
-
-| ID | Type |
-|----|------|
-| `github-token` | Username with password |
-| `aws-access-key` | Secret text |
-| `aws-secret-key` | Secret text |
-
-Create a Pipeline using:
-
-- Repository URL
-- `github-token`
-- `Jenkinsfile`
-- Target branch
-
-Run **Build Now**.
 
 ---
 
-### 3. Verify Argo CD
+### 3. Configure Application Secrets
 
-Retrieve the external address:
-
-```bash
-kubectl get svc argo-cd-argocd-server -n argocd
-```
-
-Retrieve the initial password:
+Create the required Kubernetes Secret:
 
 ```bash
-kubectl -n argocd get secret argocd-initial-admin-secret \
--o jsonpath="{.data.password}" | base64 -d
+kubectl create secret generic django-app-secret \
+  --from-literal=DJANGO_SECRET_KEY='your-secure-key' \
+  --from-literal=POSTGRES_PASSWORD='your-password' \
+  -n default
 ```
 
-Login:
-
-```
-https://<EXTERNAL-IP>
-
-Username: admin
-Password: <retrieved-password>
-```
-
-The application should eventually display:
-
-- ✅ Healthy
-- ✅ Synced
+Application configuration (database host, debug flags, etc.) is injected through a Kubernetes **ConfigMap**.
 
 ---
 
 ## 🛠 Troubleshooting
 
-### Jenkins Pods remain Pending
+### Verify Secrets
 
-Increase the EKS node capacity by:
-
-- using a larger instance type (e.g. `t3.medium`)
-- increasing the node group's `desired_size`
-
-Then apply the changes:
+If the application Pods fail to start, verify the secret exists:
 
 ```bash
-terraform apply
+kubectl get secret django-app-secret -n default
 ```
 
-### Argo CD Application stays in "Progressing"
+### Terraform State Locked
 
-If your cluster does not include an Ingress Controller, disable Ingress:
-
-```yaml
-ingress:
-  enabled: false
-```
-
-Commit and push the change. Argo CD will synchronize automatically, and the application will be accessible through its LoadBalancer service.
-
----
-
-## 🧹 Cleanup
-
-Destroy the infrastructure:
+If Terraform reports a locked state:
 
 ```bash
-terraform destroy -auto-approve
+terraform force-unlock <LOCK_ID>
 ```
 
-> **Note:** Amazon EKS, NAT Gateways, and Amazon RDS/Aurora are not included in the AWS Free Tier. Destroy all resources after testing to avoid unnecessary charges. If required, manually empty ECR repositories or S3 buckets before running `terraform destroy`.
+### Infrastructure Cleanup
+
+If `terraform destroy` cannot remove all resources:
+
+- Empty all Amazon ECR repositories.
+- Remove all object versions from the S3 backend bucket.
+- Run:
+
+```bash
+terraform destroy
+```
 
 ---
 
@@ -215,6 +172,10 @@ terraform destroy -auto-approve
 - Jenkins
 - Argo CD
 - Kaniko
+- Prometheus
+- Grafana
+- Node Exporter
+- Kube State Metrics
 - Django
-- PostgreSQL / MySQL
+- PostgreSQL 15
 - Nginx
