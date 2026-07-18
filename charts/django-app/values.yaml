@@ -1,6 +1,6 @@
 image:
   repository: 974436228692.dkr.ecr.us-west-2.amazonaws.com/lesson-8-9-ecr
-  tag: 5
+  tag: 6
 
 replicaCount: 2
 
