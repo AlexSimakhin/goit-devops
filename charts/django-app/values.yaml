@@ -20,14 +20,14 @@ service:
 env:
   DEBUG: "False"
   ALLOWED_HOSTS: "*"
-  POSTGRES_DB: "mydatabase"
-  POSTGRES_USER: "myuser"
+  POSTGRES_DB: "myapp"
+  POSTGRES_USER: "postgres"
   POSTGRES_HOST: "myapp-db.czo68eoemb6s.us-west-2.rds.amazonaws.com"
   POSTGRES_PORT: "5432"
 
 secrets:
-  DJANGO_SECRET_KEY: "placeholder-secret-key"
-  POSTGRES_PASSWORD: "mypassword"
+  DJANGO_SECRET_KEY: ""
+  POSTGRES_PASSWORD: ""
 
 ingress:
   enabled: true
