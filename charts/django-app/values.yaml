@@ -14,7 +14,7 @@ resources:
 
 service:
   type: LoadBalancer
-  port: 80
+  port: 8000
   targetPort: 8000
 
 env:
@@ -22,7 +22,7 @@ env:
   ALLOWED_HOSTS: "*"
   POSTGRES_DB: "mydatabase"
   POSTGRES_USER: "myuser"
-  POSTGRES_HOST: "db"
+  POSTGRES_HOST: "myapp-db.czo68eoemb6s.us-west-2.rds.amazonaws.com"
   POSTGRES_PORT: "5432"
 
 secrets:
