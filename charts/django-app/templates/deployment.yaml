@@ -26,6 +26,11 @@ spec:
               cpu: {{ .Values.resources.limits.cpu }}
               memory: {{ .Values.resources.limits.memory }}
           env:
+            - name: DJANGO_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: django-app-secret
+                  key: DJANGO_SECRET_KEY
             - name: POSTGRES_PASSWORD
               valueFrom:
                 secretKeyRef:
@@ -34,5 +39,3 @@ spec:
           envFrom:
             - configMapRef:
                 name: {{ .Release.Name }}-config
-            - secretRef:
-                name: django-app-secret
