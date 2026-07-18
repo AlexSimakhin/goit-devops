@@ -25,8 +25,14 @@ spec:
             limits:
               cpu: {{ .Values.resources.limits.cpu }}
               memory: {{ .Values.resources.limits.memory }}
+          env:
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: django-app-secret
+                  key: POSTGRES_PASSWORD
           envFrom:
             - configMapRef:
                 name: {{ .Release.Name }}-config
             - secretRef:
-                name: {{ .Release.Name }}-secret
+                name: django-app-secret
