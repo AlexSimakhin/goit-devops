@@ -30,7 +30,7 @@ variable "aurora_instance_count" {
 variable "engine_version" {
   description = "Engine version for standard RDS"
   type        = string
-  default     = "17.2"
+  default     = "17"
 }
 
 variable "engine_version_cluster" {

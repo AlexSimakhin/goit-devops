@@ -10,6 +10,7 @@ resource "helm_release" "jenkins" {
   chart            = "jenkins"
   namespace        = "jenkins"
   create_namespace = true
+  timeout          = 600
 
   values = [
     file("${path.module}/values.yaml")

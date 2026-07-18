@@ -24,7 +24,7 @@ spec:
     environment {
         ECR_REPO = "974436228692.dkr.ecr.us-west-2.amazonaws.com/lesson-8-9-ecr"
         GIT_REPO = "https://github.com/AlexSimakhin/goit-devops.git"
-        GIT_BRANCH = "lesson-8-9"
+        GIT_BRANCH = "final-project"
     }
     stages {
         stage('Build and Push to ECR') {
