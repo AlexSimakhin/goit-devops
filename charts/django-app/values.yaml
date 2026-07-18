@@ -32,6 +32,8 @@ secrets:
 ingress:
   enabled: true
   className: nginx
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
   host: oleksandr-simakhin.tech
   path: /
   pathType: Prefix
