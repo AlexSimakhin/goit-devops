@@ -4,7 +4,9 @@ pipeline {
             yaml '''
 apiVersion: v1
 kind: Pod
+metadata:
 spec:
+    serviceAccountName: jenkins
   containers:
   - name: kaniko
     image: gcr.io/kaniko-project/executor:debug
@@ -23,24 +25,21 @@ spec:
     }
     environment {
         ECR_REPO = "974436228692.dkr.ecr.us-west-2.amazonaws.com/lesson-8-9-ecr"
-        GIT_REPO = "https://github.com/AlexSimakhin/goit-devops.git"
         GIT_BRANCH = "final-project"
     }
     stages {
         stage('Build and Push to ECR') {
             steps {
                 container('kaniko') {
-                    withCredentials([
-                        string(credentialsId: 'aws-access-key', variable: 'AWS_ACCESS_KEY_ID'),
-                        string(credentialsId: 'aws-secret-key', variable: 'AWS_SECRET_ACCESS_KEY')
-                    ]) {
-                        sh '''
-                        export AWS_DEFAULT_REGION=us-west-2
-                        mkdir -p /kaniko/.docker
-                        echo '{"credsStore":"ecr-login"}' > /kaniko/.docker/config.json
-                        /kaniko/executor --context `pwd`/app --dockerfile `pwd`/app/Dockerfile --destination ${ECR_REPO}:${BUILD_NUMBER} --destination ${ECR_REPO}:latest
-                        '''
-                    }
+                    sh '''
+                    export AWS_SDK_LOAD_CONFIG=true
+                    export AWS_DEFAULT_REGION=us-west-2
+                    
+                    /kaniko/executor --context `pwd`/app \
+                    --dockerfile `pwd`/app/Dockerfile \
+                    --destination ${ECR_REPO}:${BUILD_NUMBER} \
+                    --destination ${ECR_REPO}:latest
+                    '''
                 }
             }
         }

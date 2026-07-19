@@ -23,3 +23,8 @@ variable "admin_password" {
   description = "Admin password for Jenkins"
   type        = string
 }
+
+variable "service_account_role_arn" {
+  description = "IAM role ARN to annotate the Jenkins Kubernetes service account with"
+  type        = string
+}

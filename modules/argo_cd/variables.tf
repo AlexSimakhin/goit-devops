@@ -19,9 +19,13 @@ variable "cluster_ca_certificate" {
   type        = string
 }
 
-variable "jenkins_admin_password" {
-  description = "Admin password for Jenkins"
+variable "db_endpoint" {
+  description = "Database connection endpoint"
   type        = string
-  default     = "adminpassword123"
+}
+
+variable "db_password" {
+  description = "Database master password"
+  type        = string
   sensitive   = true
 }

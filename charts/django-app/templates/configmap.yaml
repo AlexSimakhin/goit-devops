@@ -5,7 +5,3 @@ metadata:
 data:
   DEBUG: {{ .Values.env.DEBUG | quote }}
   ALLOWED_HOSTS: {{ .Values.env.ALLOWED_HOSTS | quote }}
-  POSTGRES_DB: {{ .Values.env.POSTGRES_DB | quote }}
-  POSTGRES_USER: {{ .Values.env.POSTGRES_USER | quote }}
-  POSTGRES_HOST: {{ .Values.env.POSTGRES_HOST | quote }}
-  POSTGRES_PORT: {{ .Values.env.POSTGRES_PORT | quote }}

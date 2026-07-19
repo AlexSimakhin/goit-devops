@@ -4,6 +4,17 @@ resource "kubernetes_namespace" "jenkins" {
   }
 }
 
+resource "kubernetes_service_account" "jenkins" {
+  metadata {
+    name      = "jenkins"
+    namespace = kubernetes_namespace.jenkins.metadata[0].name
+
+    annotations = {
+      "eks.amazonaws.com/role-arn" = var.service_account_role_arn
+    }
+  }
+}
+
 resource "helm_release" "jenkins" {
   name             = "jenkins"
   repository       = "https://charts.jenkins.io"

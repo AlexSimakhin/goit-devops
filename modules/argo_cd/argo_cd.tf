@@ -27,3 +27,26 @@ resource "helm_release" "argocd_apps" {
     file("${path.module}/charts/values.yaml")
   ]
 }
+
+resource "random_password" "django_secret_key" {
+  length           = 50
+  special          = true
+  override_special = "!@#$%^&*(-_=+)"
+}
+
+resource "kubernetes_secret" "django_app_secret" {
+  metadata {
+    name      = "django-app-secret"
+    namespace = "default"
+  }
+
+  data = {
+    POSTGRES_HOST     = var.db_endpoint
+    POSTGRES_DB       = "myapp"
+    POSTGRES_USER     = "postgres"
+    POSTGRES_PASSWORD = var.db_password
+    DJANGO_SECRET_KEY = random_password.django_secret_key.result
+  }
+
+  depends_on = [helm_release.argocd]
+}

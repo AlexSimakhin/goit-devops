@@ -1,6 +1,6 @@
 image:
   repository: 974436228692.dkr.ecr.us-west-2.amazonaws.com/lesson-8-9-ecr
-  tag: 7
+  tag: 6
 
 replicaCount: 2
 
@@ -20,14 +20,6 @@ service:
 env:
   DEBUG: "False"
   ALLOWED_HOSTS: "*"
-  POSTGRES_DB: "myapp"
-  POSTGRES_USER: "postgres"
-  POSTGRES_HOST: "myapp-db.czo68eoemb6s.us-west-2.rds.amazonaws.com"
-  POSTGRES_PORT: "5432"
-
-secrets:
-  DJANGO_SECRET_KEY: ""
-  POSTGRES_PASSWORD: ""
 
 ingress:
   enabled: true

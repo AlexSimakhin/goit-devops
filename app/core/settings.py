@@ -21,12 +21,12 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-$hvl1p6a_1q$cs5o1tx29a3i@0k-dqam#hyowhx950mtr25#xc'
+SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.environ.get('DEBUG', 'False').lower() == 'true'
 
-ALLOWED_HOSTS = ['*']
+ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '*').split(',')
 
 
 # Application definition
@@ -76,10 +76,10 @@ WSGI_APPLICATION = 'core.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': os.environ.get('POSTGRES_DB', 'mydatabase'),
-        'USER': os.environ.get('POSTGRES_USER', 'myuser'),
-        'PASSWORD': os.environ.get('POSTGRES_PASSWORD', 'mypassword'),
-        'HOST': os.environ.get('POSTGRES_HOST', 'db'),
+        'NAME': os.environ.get('POSTGRES_DB'),
+        'USER': os.environ.get('POSTGRES_USER'),
+        'PASSWORD': os.environ.get('POSTGRES_PASSWORD'),
+        'HOST': os.environ.get('POSTGRES_HOST'),
         'PORT': os.environ.get('POSTGRES_PORT', '5432'),
         'OPTIONS': {
             'sslmode': 'require',

@@ -25,15 +25,16 @@ module "ecr" {
 module "eks" {
   source       = "./modules/eks"
   cluster_name = var.cluster_name
-  subnet_ids   = concat(module.vpc.public_subnet_ids, module.vpc.private_subnet_ids)
+  subnet_ids   = module.vpc.private_subnet_ids
 }
 
 module "jenkins" {
-  source                 = "./modules/jenkins"
-  cluster_name           = module.eks.cluster_name
-  cluster_endpoint       = module.eks.cluster_endpoint
-  cluster_ca_certificate = module.eks.cluster_certificate_authority_data
-  admin_password         = var.jenkins_admin_password
+  source                   = "./modules/jenkins"
+  cluster_name             = module.eks.cluster_name
+  cluster_endpoint         = module.eks.cluster_endpoint
+  cluster_ca_certificate   = module.eks.cluster_certificate_authority_data
+  admin_password           = var.jenkins_admin_password
+  service_account_role_arn = module.eks.jenkins_role_arn
 }
 
 module "argo_cd" {
@@ -41,6 +42,8 @@ module "argo_cd" {
   cluster_name           = module.eks.cluster_name
   cluster_endpoint       = module.eks.cluster_endpoint
   cluster_ca_certificate = module.eks.cluster_certificate_authority_data
+  db_endpoint            = module.rds.db_endpoint
+  db_password            = var.db_password
 }
 
 module "rds" {
@@ -66,15 +69,15 @@ module "rds" {
   allocated_storage       = 20
   db_name                 = "myapp"
   username                = "postgres"
-  password                = "admin123AWS23"
+  password                = var.db_password
   subnet_private_ids      = module.vpc.private_subnet_ids
   subnet_public_ids       = module.vpc.public_subnet_ids
-  publicly_accessible     = true
+  publicly_accessible     = false
   vpc_id                  = module.vpc.vpc_id
   multi_az                = true
   backup_retention_period = 1
   db_port                 = 5432
-  allowed_cidr_blocks     = ["0.0.0.0/0"]
+  allowed_cidr_blocks     = [var.vpc_cidr_block]
 
   parameters = {
     max_connections = "100"

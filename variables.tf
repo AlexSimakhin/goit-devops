@@ -104,7 +104,6 @@ variable "db_password" {
   description = "Database master password"
   type        = string
   sensitive   = true
-  default     = "admin123AWS23"
 }
 
 variable "db_instance_class" {
@@ -116,6 +115,5 @@ variable "db_instance_class" {
 variable "jenkins_admin_password" {
   description = "Admin password for Jenkins"
   type        = string
-  default     = "adminpassword123"
   sensitive   = true
 }
