@@ -4,6 +4,27 @@ This project provisions a production-ready AWS infrastructure and implements a *
 
 ---
 
+## Quick Start
+
+1. Copy `terraform.tfvars.example` to `terraform.tfvars` and set your environment values.
+2. Run `terraform init` and bootstrap the backend with `terraform apply -target=module.s3_backend`.
+3. Re-run `terraform init -migrate-state` and then `terraform apply -auto-approve`.
+4. Configure `kubectl`, apply `sc.yaml`, and verify the application secret in `default`.
+
+---
+
+## Prerequisites
+
+Before deploying, make sure you have:
+
+- Terraform
+- AWS CLI configured for the target account
+- `kubectl`
+- Helm
+- Access to the EKS cluster after provisioning
+
+---
+
 ## 🏗 Architecture
 
 | Component | Technology | Purpose |
@@ -14,7 +35,7 @@ This project provisions a production-ready AWS infrastructure and implements a *
 | Storage | GP3 StorageClass | Dynamic EBS persistent volumes |
 | CI | Jenkins + Kaniko | Build and publish Docker images |
 | CD | Argo CD | GitOps deployment |
-| Monitoring | Prometheus, Grafana | Metrics, dashboards & observability |
+| Monitoring | metrics-server, Prometheus, Grafana, ingress-nginx, cert-manager | Metrics, dashboards, autoscaling, and ingress support |
 | Runtime | Django, PostgreSQL 15, Nginx | Application stack |
 
 ---
@@ -46,7 +67,7 @@ Switching between RDS and Aurora only requires changing Terraform variables.
 The deployment process is fully automated:
 
 1. Push code to GitHub.
-2. Jenkins builds the Docker image using **Kaniko**.
+2. Jenkins builds the Docker image using **Kaniko** with IRSA-based AWS access.
 3. The image is pushed to **Amazon ECR**.
 4. Jenkins updates `charts/django-app/values.yaml` with the new image tag.
 5. Jenkins commits and pushes the updated Helm chart to GitHub.
@@ -79,7 +100,15 @@ The monitoring stack enables:
 
 ## 🚀 Deployment
 
-### 1. Bootstrap Terraform Backend
+### 1. Prepare Terraform Variables
+
+Start from the example file and adjust values for your environment:
+
+```bash
+cp terraform.tfvars.example terraform.tfvars
+```
+
+### 2. Bootstrap Terraform Backend
 
 Initialize Terraform and create the backend resources:
 
@@ -106,28 +135,46 @@ This provisions the complete AWS infrastructure, including:
 
 ---
 
-### 2. Configure Storage
+### 3. Configure Kubernetes Access and Storage
 
-Create the GP3 StorageClass used for dynamic EBS volumes:
+After provisioning, update your local kubeconfig and create the storage class used by the application:
 
 ```bash
+aws eks update-kubeconfig --name <cluster-name> --region <aws-region>
 kubectl apply -f sc.yaml
 ```
 
 ---
 
-### 3. Configure Application Secrets
+### 4. Application Runtime
 
-Create the required Kubernetes Secret:
+Application secrets are created by Terraform in the `default` namespace as `django-app-secret`.
+
+The secret contains:
+
+- `DJANGO_SECRET_KEY`
+- `POSTGRES_HOST`
+- `POSTGRES_DB`
+- `POSTGRES_USER`
+- `POSTGRES_PASSWORD`
+
+Application configuration such as debug flags and allowed hosts is injected through a Kubernetes **ConfigMap**.
+
+If you want to verify the secret after deployment:
 
 ```bash
-kubectl create secret generic django-app-secret \
-  --from-literal=DJANGO_SECRET_KEY='your-secure-key' \
-  --from-literal=POSTGRES_PASSWORD='your-password' \
-  -n default
+kubectl get secret django-app-secret -n default
 ```
 
-Application configuration (database host, debug flags, etc.) is injected through a Kubernetes **ConfigMap**.
+The cluster installs **metrics-server**, **ingress-nginx**, **cert-manager**, **Prometheus**, and **Grafana** through Terraform.
+
+If you need to refresh the cluster issuer, apply:
+
+```bash
+kubectl apply -f cluster-issuer.yaml
+```
+
+Make sure the DNS record for `oleksandr-simakhin.tech` points to the ingress controller load balancer.
 
 ---
 
@@ -135,11 +182,7 @@ Application configuration (database host, debug flags, etc.) is injected through
 
 ### Verify Secrets
 
-If the application Pods fail to start, verify the secret exists:
-
-```bash
-kubectl get secret django-app-secret -n default
-```
+If the application Pods fail to start, verify the `django-app-secret` secret exists and contains the expected keys.
 
 ### Terraform State Locked
 
