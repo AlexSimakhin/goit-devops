@@ -1,0 +1,4 @@
+apiVersion: v2
+name: argocd-apps
+description: Argo CD applications and repositories setup
+version: 0.1.0

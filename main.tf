@@ -1,0 +1,99 @@
+module "s3_backend" {
+  source      = "./modules/s3-backend"
+  bucket_name = var.state_bucket_name
+  table_name  = var.state_table_name
+}
+
+module "vpc" {
+  source                 = "./modules/vpc"
+  vpc_cidr_block         = var.vpc_cidr_block
+  public_subnets         = var.public_subnets
+  private_subnets        = var.private_subnets
+  availability_zones     = var.availability_zones
+  vpc_name               = var.vpc_name
+  enable_nat_gateway     = var.enable_nat_gateway
+  single_nat_gateway     = var.single_nat_gateway
+  one_nat_gateway_per_az = var.one_nat_gateway_per_az
+}
+
+module "ecr" {
+  source       = "./modules/ecr"
+  ecr_name     = var.ecr_repository_name
+  scan_on_push = var.scan_on_push
+}
+
+module "eks" {
+  source       = "./modules/eks"
+  cluster_name = var.cluster_name
+  subnet_ids   = module.vpc.private_subnet_ids
+}
+
+module "jenkins" {
+  source                   = "./modules/jenkins"
+  cluster_name             = module.eks.cluster_name
+  cluster_endpoint         = module.eks.cluster_endpoint
+  cluster_ca_certificate   = module.eks.cluster_certificate_authority_data
+  admin_password           = var.jenkins_admin_password
+  service_account_role_arn = module.eks.jenkins_role_arn
+}
+
+module "argo_cd" {
+  source                 = "./modules/argo_cd"
+  cluster_name           = module.eks.cluster_name
+  cluster_endpoint       = module.eks.cluster_endpoint
+  cluster_ca_certificate = module.eks.cluster_certificate_authority_data
+  db_endpoint            = module.rds.db_endpoint
+  db_password            = var.db_password
+}
+
+module "rds" {
+  source = "./modules/rds"
+
+  name                  = "myapp-db"
+  use_aurora            = false
+  aurora_instance_count = 2
+  aurora_replica_count  = 1
+
+  # --- Aurora-only ---
+  engine_cluster                = "aurora-postgresql"
+  engine_version_cluster        = "15.3"
+  parameter_group_family_aurora = "aurora-postgresql15"
+
+  # --- RDS-only ---
+  engine                     = "postgres"
+  engine_version             = "17"
+  parameter_group_family_rds = "postgres17"
+
+  # Common
+  instance_class          = "db.t3.micro"
+  allocated_storage       = 20
+  db_name                 = "myapp"
+  username                = "postgres"
+  password                = var.db_password
+  subnet_private_ids      = module.vpc.private_subnet_ids
+  subnet_public_ids       = module.vpc.public_subnet_ids
+  publicly_accessible     = false
+  vpc_id                  = module.vpc.vpc_id
+  multi_az                = true
+  backup_retention_period = 1
+  db_port                 = 5432
+  allowed_cidr_blocks     = [var.vpc_cidr_block]
+
+  parameters = {
+    max_connections = "100"
+    log_statement   = "all"
+    work_mem        = "4096"
+  }
+
+  tags = {
+    Environment = "dev"
+    Project     = "myapp"
+  }
+}
+
+module "monitoring" {
+  source                 = "./modules/monitoring"
+  cluster_name           = module.eks.cluster_name
+  cluster_endpoint       = module.eks.cluster_endpoint
+  cluster_ca_certificate = module.eks.cluster_certificate_authority_data
+}

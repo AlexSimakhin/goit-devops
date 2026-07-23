@@ -1,0 +1,3 @@
+repoUrl: "https://github.com/AlexSimakhin/goit-devops.git"
+targetRevision: "final-project"
+path: "charts/django-app"

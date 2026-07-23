@@ -1,0 +1,32 @@
+image:
+  repository: 974436228692.dkr.ecr.us-west-2.amazonaws.com/lesson-8-9-ecr
+  tag: 6
+
+replicaCount: 2
+
+resources:
+  requests:
+    cpu: "100m"
+    memory: "128Mi"
+  limits:
+    cpu: "250m"
+    memory: "256Mi"
+
+service:
+  type: LoadBalancer
+  port: 8000
+  targetPort: 8000
+
+env:
+  DEBUG: "False"
+  ALLOWED_HOSTS: "*"
+
+ingress:
+  enabled: true
+  className: nginx
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+  host: oleksandr-simakhin.tech
+  path: /
+  pathType: Prefix
+  tls: true
